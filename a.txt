@@ -1,0 +1,30 @@
+CREATE TABLE Person (
+person_id int PRIMARY KEY,
+name varchar(20),
+gender varchar(1)
+);
+create table department (
+department_name varchar(20),
+type varchar(1),
+num_employees int,
+code varchar(10),
+city varchar(15)
+);
+
+INSERT INTO Person
+VALUES (102062106, 'Richy', 'M');
+
+INSERT INTO department
+VALUES ('CompuTerScience', 'K', 300, 'cs', 'Hsing-Chu');
+
+INSERT INTO Person
+VALUES (102062111, 'Chihmin-Lin', 'M');
+
+iNsErT iNtO pErSoN(person_Id, gender, name)
+vAlUeS(1234,'F', 'John Smith');
+
+iNsErT iNtO pErSoN(person_Id, gender, name)
+vAlUeS(1234,'M', 'hikariiiiii');
+
+INSERT INTO department(type, department_name, city, code, num_employees)
+VLAUES ('H', 'Lifescience', 'Taipei', 'LS', 100);
