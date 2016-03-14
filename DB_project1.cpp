@@ -25,7 +25,7 @@ struct Table{
 	char* types[7];//int or varchar
 	int varcharLength[7];
 	int attrNum;//how many attribute are there in this table
-	char* primarykey;
+	int primarykey[7];
 	int dataCount;
 	
 	Data* dataRoot;
@@ -38,7 +38,8 @@ struct Table{
 		attrNum = 0;
 		dataCount = 0;
 		dataRoot = NULL;
-		datatail = NULL;	
+		datatail = NULL;
+		memset(primarykey, 0, 7*sizeof(int));	
 	}
 	
 	
@@ -66,11 +67,11 @@ void Analysis(char* str, char** keyword){
 	int cnt = 0;
 	char* pch;
 	// word only
-	pch = strtok (str," \n,(){}'");
+	pch = strtok (str," \n,(){}");
 	while (pch != NULL){
 	//	printf ("%s\n",pch);
 		keyword[cnt++] = pch;
-		pch = strtok (NULL, " \n,(){}'");
+		pch = strtok (NULL, " \n,(){}");
 	}
 }
 
@@ -137,7 +138,7 @@ void GetInstruction(){
 				i += 1;
 				
 				if(!strcmp(keyword[i], "primary")){
-					newTable->primarykey = keyword[i-2];
+					newTable->primarykey[attrcnt-1] = 1;
 					printf("got primary key = %s\n", keyword[i-2]);
 					i += 2;
 				}
