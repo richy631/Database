@@ -94,7 +94,8 @@ void GetInstruction(){
 		}
 		str[cnt++] = c;
 	}
-	printf("%s\n", str);
+	//here will print all word 
+	//printf("%s\n", str);
 	Analysis(str, keyword);
 	int len = 0;
 	for(int i=0;i<300;i++){
@@ -131,15 +132,16 @@ void GetInstruction(){
 			//now keyword[i] is attribute name
 			while(i < len){
 				newTable->attrName[attrcnt] = keyword[i];
-				printf("attrName[%d] get %s\n", attrcnt, newTable->attrName[attrcnt]);
+				//printf("attrName[%d] get %s\n", attrcnt, newTable->attrName[attrcnt]);
 				i += 1;
 				newTable->types[attrcnt++] = keyword[i];
-				printf("type[%d] get %s\n", attrcnt-1, newTable->types[attrcnt-1]);
+				//printf("type[%d] get %s\n", attrcnt-1, newTable->types[attrcnt-1]);
 				i += 1;
 				
 				if(!strcmp(keyword[i], "primary")){
 					newTable->primarykey[attrcnt-1] = 1;
-					printf("got primary key = %s\n", keyword[i-2]);
+				//	printf("primarykey[%d] = 1\n", attrcnt-1);
+				//	printf("got primary key = %s\n", keyword[i-2]);
 					i += 2;
 				}
 				//for varchar number
@@ -148,42 +150,76 @@ void GetInstruction(){
 				    int num;
 				    s_str >> num;
 					newTable->varcharLength[attrcnt-1] = num;
-					printf("varcharLength[%d] get %d\n", attrcnt-1, num);
+				//	printf("varcharLength[%d] get %d\n", attrcnt-1, num);
 					i += 1;
 				}
 				newTable->attrNum = attrcnt;
-				printf("%d attributes !!\n\n", newTable->attrNum);
+				//printf("%d attributes !!\n\n", newTable->attrNum);
 			}
 			printf("Now have %d Table\n", numofTable);
 		}
 		
 		else if(! strcmp(keyword[i], "insert")){
 			i += 2;
-			Table *now;
+			Table *nowtable;
 			Data *nowdata;
-			now = root->next;
+			nowtable = root->next;
 			
 			//start to find table
 			//now keyword[i] is table name
 			for(int j=0;j<numofTable;j++){
-				if(!strcmp(now->tableName, keyword[i])){
+				if(!strcmp(nowtable->tableName, keyword[i])){
 					//got that table
 					Data *data = new Data;
-					if(now->dataCount == 0){
-						now->dataRoot = data;
-						now->datatail = data;
-						now->dataCount += 1;	
+					//no data exist , then create new data
+					if(nowtable->dataCount == 0){
+						nowtable->dataRoot = data;
+						nowtable->datatail = data;
+						nowtable->dataCount += 1;	
 					}
 					else{
-						now->datatail->next = data;
-						now->datatail = data;
-						now->dataCount += 1;
+						nowtable->datatail->next = data;
+						nowtable->datatail = data;
+						nowtable->dataCount += 1;
 					}
+					//insert word in data
 					if(!strcmp(keyword[i+1],"values")){
 						//same order as in table
 						i += 2;
+						//now keyword[i] is first word
 						//start to insert
-						for(int k=0;k<now->attrNum;k++){
+						for(int k=0;k<nowtable->attrNum;k++){
+							/*int conflict = 0;
+							//check if it is primary key
+							//printf("nowtable's data number is %d\n", nowtable->dataCount);
+							printf("primarykey[%d] = %d\n", k, nowtable->primarykey[k]);
+							if(nowtable->primarykey[k] == 1){
+								//is primary key
+								Data *check = new Data;
+								check = root->next->dataRoot;
+								printf("got primary key!!\n\n");
+								for(int l=0;l<nowtable->dataCount-1;l++){
+									printf("I am in loop %d\n", l+1);
+									printf("new data is %s\n", keyword[i]);
+									printf("data in table is %s\n", check->attr[k]);
+									if(!strcmp(check->attr[k], keyword[i])){
+										
+										conflict = 1;
+									}
+									check = check->next;
+								}
+							}
+							if(conflict == 0){
+								data->attr[k] = keyword[i++];
+								printf("insert : %s\n", keyword[i-1]);
+							}
+							else{
+								printf("There is already exist same primary key\n");
+								nowtable->datatail = NULL;
+								nowtable->dataCount -= 1;
+								break;
+							}*/
+							//origin
 							data->attr[k] = keyword[i++];
 							printf("insert : %s\n", keyword[i-1]);
 						}
@@ -191,50 +227,50 @@ void GetInstruction(){
 					else{
 						//as given order
 						//use array a to record the order
-						int *a = (int*)malloc(now->attrNum * sizeof(int));
-						for(int k=0;k<now->attrNum;k++){
-							for(int l=0;l<now->attrNum;l++){
-								if(!strcmp(keyword[i+k+1], now->attrName[l])){
+						int *a = (int*)malloc(nowtable->attrNum * sizeof(int));
+						for(int k=0;k<nowtable->attrNum;k++){
+							for(int l=0;l<nowtable->attrNum;l++){
+								if(!strcmp(keyword[i+k+1], nowtable->attrName[l])){
 									a[k] = l;
 								}
 							}
 						}
-						i += (now->attrNum + 2);
+						i += (nowtable->attrNum + 2);
 						//now keyword[i] is first data of insert
-						for(int k=0;k<now->attrNum;k++){
+						for(int k=0;k<nowtable->attrNum;k++){
 							data->attr[a[k]] = keyword[i++];
 							printf("insert : %s\n", keyword[i-1]); 
 						}
 					}
 					break;
 				}
-				now = now->next;
+				nowtable = nowtable->next;
 				if(j==numofTable-1)
 					printf("404 table not found\n");
 			}
 		}
 		else if(! strcmp(keyword[i], "showtable")){
-			Table *now;
+			Table *nowtable;
 			Data *nowdata;
-			now = root->next;
+			nowtable = root->next;
 			for(int k=0;k<numofTable;k++){
-				nowdata = now->dataRoot;
-				printf("Table %d : %s\n", k, now->tableName);
-				for(int j=0;j<now->attrNum;j++){
-				//	printf("attribute name : %s\n", now->attrName[j]);
-				//	printf("type name : %s\n", now->types[j]);
-					printf("%15s", now->attrName[j]);
+				nowdata = nowtable->dataRoot;
+				printf("Table %d : %s\n", k+1, nowtable->tableName);
+				for(int j=0;j<nowtable->attrNum;j++){
+				//	printf("attribute name : %s\n", nowtable->attrName[j]);
+				//	printf("type name : %s\n", nowtable->types[j]);
+					printf("%15s", nowtable->attrName[j]);
 				}
 				printf("\n");
-				for(int j=0;j<now->dataCount;j++){
-					for(int l=0;l<now->attrNum;l++){
+				for(int j=0;j<nowtable->dataCount;j++){
+					for(int l=0;l<nowtable->attrNum;l++){
 						printf("%15s", nowdata->attr[l]);
 					}
 					printf("\n");
 					nowdata = nowdata->next;
 				}
 				
-				now = now->next;
+				nowtable = nowtable->next;
 			}
 		}
 	}
