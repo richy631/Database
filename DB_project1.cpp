@@ -10,6 +10,7 @@ using namespace std;
 
 void GetInstruction();
 void Analysis(char* str);
+void showtable();
 
 struct Data{
 	char* attr[7];
@@ -58,12 +59,40 @@ int main(){
 	tail = root; 
 	do{
 		GetInstruction();
+		showtable();
 	}
 	while(c = getchar() != EOF);
 	
 	return 0;
 }
 
+void showtable(){
+	Table *nowtable;
+	Data *nowdata;
+	nowtable = root->next;
+	for(int k=0;k<numofTable;k++){
+		nowdata = nowtable->dataRoot;
+		printf("----------Table %d : %s----------\n", k+1, nowtable->tableName);
+		for(int j=0;j<nowtable->attrNum;j++){
+		//	printf("attribute name : %s\n", nowtable->attrName[j]);
+		//	printf("type name : %s\n", nowtable->types[j]);	
+			if(nowtable->primarykey[j] == 1)
+				printf("#%-14s", nowtable->attrName[j]);
+			else 			
+				printf("%-15s", nowtable->attrName[j]);									
+		}
+		printf("\n");
+		for(int j=0;j<nowtable->dataCount;j++){
+			for(int l=0;l<nowtable->attrNum;l++){
+				printf("%-15s", nowdata->attr[l]);
+			}
+			printf("\n");
+			nowdata = nowdata->next;
+		}
+		
+		nowtable = nowtable->next;
+	}	
+}
 
 void Analysis(char* str, char** keyword){
 	int cnt = 0;
@@ -231,28 +260,19 @@ void GetInstruction(){
 			
 			//start to find table
 			//now keyword[i] is table name
+			int somethingWrong = 0;
 			for(int j=0;j<numofTable;j++){
 				if(!strcmp(nowtable->tableName, keyword[i])){
 					//got that table
 					Data *data = new Data;
-					//no data exist , then create new data
-					if(nowtable->dataCount == 0){
-						nowtable->dataRoot = data;
-						nowtable->datatail = data;
-						nowtable->dataCount += 1;	
-					}
-					else{
-						nowtable->datatail->next = data;
-						data->previous = nowtable->datatail;
-						nowtable->datatail = data;
-						nowtable->dataCount += 1;
-					}
+					
 					//insert word in data
 					if(!strcmp(keyword[i+1],"values")){
 						//same order as in table
 						i += 2;
 						//now keyword[i] is first word
 						//start to insert
+						//printf("start to insert : %s\n", keyword[i]);
 						for(int k=0;k<nowtable->attrNum;k++){
 							int conflict = 0;
 							//check if it is primary key
@@ -261,27 +281,46 @@ void GetInstruction(){
 								Data *check = new Data;
 								check = root->next->dataRoot;
 								//printf("got primary key!!\n\n");
-								for(int l=0;l<nowtable->dataCount-1;l++){
+								for(int l=0;l<nowtable->dataCount;l++){
 								//	printf("I am in loop %d\n", l+1);
 								//	printf("new data is %s\n", keyword[i]);
 								//	printf("data in table is %s\n", check->attr[k]);
 									if(!strcmp(check->attr[k], keyword[i])){
-										
+										somethingWrong = 1;
 										conflict = 1;
+										break;
 									}
 									check = check->next;
 								}
 							}
 							if(conflict == 0){
-								data->attr[k] = keyword[i++];
-								printf("insert : %s\n", keyword[i-1]);
+								//printf("Not primary key!!\n");
+								if(nowtable->types[k] == 'v'){//is varchar
+									if(strlen(keyword[i]) < nowtable->varcharLength[k]){
+										data->attr[k] = keyword[i++];
+										printf("insert : %s\n", keyword[i-1]);
+									}
+									else{
+										somethingWrong = 1;
+										printf("out of varchar RANGE!!\n");
+										break;
+									}
+								}
+								else{//is interger
+									if(isdigit(*keyword[i])){ 
+										data->attr[k] = keyword[i++];
+										printf("insert : %s\n", keyword[i-1]);	
+									}
+									else{
+										somethingWrong = 1;
+										printf("Not a Number!!\n");
+										break;
+									}
+								}
 							}
+							
 							else{
 								printf("There is already exist same primary key\n");
-								nowtable->datatail = data->previous;
-								nowtable->datatail->next = NULL;
-								nowtable->dataCount -= 1;
-								delete data;
 								break;
 							}
 							
@@ -289,7 +328,24 @@ void GetInstruction(){
 							//data->attr[k] = keyword[i++];
 							//printf("insert : %s\n", keyword[i-1]);
 						}
+						
+						if(somethingWrong == 0){
+							printf("-----INDERT SUCCESSFULLY-----\n");
+							//no data exist , then create new data
+							if(nowtable->dataCount == 0){
+								nowtable->dataRoot = data;
+								nowtable->datatail = data;
+								nowtable->dataCount += 1;	
+							}
+							else{
+								nowtable->datatail->next = data;
+								data->previous = nowtable->datatail;
+								nowtable->datatail = data;
+								nowtable->dataCount += 1;
+							}	
+						}
 					}
+					
 					else{
 						//as given order
 						//use array a to record the order
@@ -307,40 +363,75 @@ void GetInstruction(){
 						for(int k=0;k<nowtable->attrNum;k++){
 							int conflict = 0;
 							//check if it is primary key
-							//printf("nowtable's data number is %d\n", nowtable->dataCount);
-							//printf("primarykey[%d] = %d\n", k, nowtable->primarykey[k]);
-							if(nowtable->primarykey[k] == 1){
+							if(nowtable->primarykey[a[k]] == 1){
 								//is primary key
 								Data *check = new Data;
 								check = root->next->dataRoot;
 								//printf("got primary key!!\n\n");
-								for(int l=0;l<nowtable->dataCount-1;l++){
+								for(int l=0;l<nowtable->dataCount;l++){
 								//	printf("I am in loop %d\n", l+1);
 								//	printf("new data is %s\n", keyword[i]);
 								//	printf("data in table is %s\n", check->attr[k]);
-									if(!strcmp(check->attr[k], keyword[i])){
-										
+									if(!strcmp(check->attr[a[k]], keyword[i])){
+										somethingWrong = 1;
 										conflict = 1;
+										break;
 									}
 									check = check->next;
 								}
 							}
 							if(conflict == 0){
-								data->attr[a[k]] = keyword[i++];
-								printf("insert : %s\n", keyword[i-1]); 
+								//printf("Not primary key!!\n");
+								if(nowtable->types[a[k]] == 'v'){
+									if(strlen(keyword[i]) < nowtable->varcharLength[a[k]]){
+										data->attr[a[k]] = keyword[i++];
+										printf("insert : %s\n", keyword[i-1]);
+									}
+									else{
+										somethingWrong = 1;
+										printf("out of varchar RANGE!!\n");
+										break;
+									}
+								}
+								else{//is interger
+									if(isdigit(*keyword[i])){ 
+										data->attr[a[k]] = keyword[i++];
+										printf("insert : %s\n", keyword[i-1]);	
+									}
+									else{
+										somethingWrong = 1;
+										printf("Not a Number!!\n");
+										break;
+									}
+								}
 							}
+							
 							else{
 								printf("There is already exist same primary key\n");
-								nowtable->datatail = data->previous;
-								nowtable->datatail->next = NULL;
-								nowtable->dataCount -= 1;
-								delete data;
 								break;
 							}
+							
 							//origin
-							//data->attr[a[k]] = keyword[i++];
-							//printf("insert : %s\n", keyword[i-1]); 
+							//data->attr[k] = keyword[i++];
+							//printf("insert : %s\n", keyword[i-1]);
 						}
+						
+						if(somethingWrong == 0){
+							printf("-----INDERT SUCCESSFULLY-----\n");
+							//no data exist , then create new data
+							if(nowtable->dataCount == 0){
+								nowtable->dataRoot = data;
+								nowtable->datatail = data;
+								nowtable->dataCount += 1;	
+							}
+							else{
+								nowtable->datatail->next = data;
+								data->previous = nowtable->datatail;
+								nowtable->datatail = data;
+								nowtable->dataCount += 1;
+							}	
+						}
+						
 					}
 					break;
 				}
@@ -350,31 +441,8 @@ void GetInstruction(){
 			}
 		}
 		else if(! strcmp(keyword[i], "showtable")){
-			Table *nowtable;
-			Data *nowdata;
-			nowtable = root->next;
-			for(int k=0;k<numofTable;k++){
-				nowdata = nowtable->dataRoot;
-				printf("Table %d : %s\n", k+1, nowtable->tableName);
-				for(int j=0;j<nowtable->attrNum;j++){
-				//	printf("attribute name : %s\n", nowtable->attrName[j]);
-				//	printf("type name : %s\n", nowtable->types[j]);
-														
-					printf("%15s", nowtable->attrName[j]);
-					if(nowtable->primarykey[j] == 1)
-						printf("#");												
-				}
-				printf("\n");
-				for(int j=0;j<nowtable->dataCount;j++){
-					for(int l=0;l<nowtable->attrNum;l++){
-						printf("%15s", nowdata->attr[l]);
-					}
-					printf("\n");
-					nowdata = nowdata->next;
-				}
-				
-				nowtable = nowtable->next;
-			}
+			showtable();
 		}
 	}
 }
+
