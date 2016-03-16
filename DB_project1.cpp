@@ -358,11 +358,11 @@ void GetInstruction(){
 								}
 							}
 						}
-						printf("¶¶§Ç:");
+						/*printf("¶¶§Ç:");
 						for(int g=0;g<nowtable->attrNum;g++){
 							printf("%d ", a[g]);
 						}
-						printf("\n");
+						printf("\n");*/
 						i += (nowtable->attrNum + 2);
 						//now keyword[i] is first data of insert
 						for(int k=0;k<nowtable->attrNum;k++){
@@ -372,7 +372,7 @@ void GetInstruction(){
 								//is primary key
 								Data *check = new Data;
 								check =	nowtable->dataRoot;
-								printf("got primary key = %s!!\n", nowtable->attrName[a[k]]);
+								//printf("got primary key = %s!!\n", nowtable->attrName[a[k]]);
 								for(int l=0;l<nowtable->dataCount;l++){
 								//	printf("I am in loop %d\n", l+1);
 								//	printf("new data is %s\n", keyword[i]);
