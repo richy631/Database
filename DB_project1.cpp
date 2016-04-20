@@ -5,6 +5,7 @@
 #include <cctype>
 #include <string>
 #include <sstream> 
+#include <vector>
 
 using namespace std;
 
@@ -102,7 +103,51 @@ void showtable(){
 	}	
 }
 
+bool compare(char* word1, char* word2, char* op){
+	if(!strcmp(op, "=")){
+		return (!strcmp(word1, word2));
+	}
+	else if(!strcmp(op, "<>")){
+		return (strcmp(word1, word2));
+	}
+	else if(!strcmp(op, ">")){
+		if(isdigit(*word2)){//word2 is number
+			stringstream w1_str( word1 );
+		    int num1;
+		    w1_str >> num1;
+		    
+		    stringstream w2_str( word2 );
+		    int num2;
+		    w1_str >> num2;
+		    
+		    return (num1 > num2);
+		}
+		else return false;
+	}
+	else if(!strcmp(op, "<")){
+		if(isdigit(*word2)){//word2 is number
+			stringstream w1_str( word1 );
+		    int num1;
+		    w1_str >> num1;
+		    
+		    stringstream w2_str( word2 );
+		    int num2;
+		    w1_str >> num2;
+		    
+		    return (num1 < num2);
+		}
+		else return false;
+	}
+}
 
+bool compareData(Data* data1, Data* data2){
+	for(int i=0;i<3;i++){
+		if(strcmp(data1->attr[i], data2->attr[i])){
+			return false;
+		}
+	}
+	return true;
+}
 
 int Analysis(char* str, char** keyword){
 	int cnt = 0;
@@ -470,7 +515,7 @@ void GetInstruction(){
 			int from = 0;
 			int where = 0;
 			int whereCondition = 0;
-			printf("number of word is %d\n", keywordNum);
+			//printf("number of word is %d\n", keywordNum);
 			for(int j=0;j<keywordNum;j++) {
 				if(!strcmp(keyword[i+j], "from")){
 					from = i+j;
@@ -483,7 +528,7 @@ void GetInstruction(){
 				}
 				
 			}
-			printf("from = %d, where = %d, whereCondition = %d\n", from, where, whereCondition);
+			//printf("from = %d, where = %d, whereCondition = %d\n", from, where, whereCondition);
 			
 			//the FROM PART 
 			//there has "where"
@@ -583,12 +628,15 @@ void GetInstruction(){
 			
 			//start to print the query
 			//the SELECT PART
+			Table* selectTableRoot;
+			int selectTableNum = 0;
 			if(!strcmp(keyword[i+1], "*")){
 				Table* tmptable = fromTableRoot->next;
 				for(int j=0;j<fromTableNum;j++){
 					for(int l=0;l<tmptable->attrNum;l++){
 						tmptable->isSelect[l] = 1;	
 					}
+					tmptable = tmptable->next;					
 				}
 			}
 			else if(!strcmp(keyword[i+1], "count")){
@@ -598,15 +646,16 @@ void GetInstruction(){
 				
 			}
 			else{
-				for(int j=1;j<from;j++){ 
+				for(int j=1;j<from;j++){
 					Table* tmptable = fromTableRoot->next;
 					//if the attribute has prefix table name
 					int find = 0;
-					//printf("start to find the word %s...\n", keyword[j]);
+					//printf("start to find the word \"%s\" to SELECT...\n", keyword[j]);
 					int attributeFound = 0;
 					for(int k=0;k<fromTableNum;k++){
 						//full name or alias
 						if(!strcmp(keyword[j], tmptable->tableName) || (keyword[j][0] == tmptable->alias)){
+							
 							//find which table
 							//then start to find attribute
 							attributeFound = 0;
@@ -614,7 +663,7 @@ void GetInstruction(){
 								if(!strcmp(keyword[j+1], tmptable->attrName[l])){
 									//printf("in \"SELECT\" part\n");
 									//printf("find the attribute!!\n");
-									//printf("attribute name = %s\n", tmptable->attrName[l]);
+									//printf("attribute name = %s is SELECT!!\n", tmptable->attrName[l]);
 									//printf("it is from table : %s\n\n", tmptable->tableName);
 									
 									
@@ -623,7 +672,32 @@ void GetInstruction(){
 									tmptable->isSelect[l] = 1;
 									j = j + 1;
 									find = 1;
+									if(selectTableNum == 0){
+										selectTableRoot->next = tmptable;
+										selectTableRoot->tabletail = tmptable;
+										selectTableNum ++;	
+									}
+									else{
+										selectTableRoot->tabletail->next = tmptable;
+										selectTableRoot->tabletail = tmptable;
+										selectTableNum ++;
+									}
 								}	
+							}
+							if(!strcmp(keyword[j+1], "*")){
+								if(selectTableNum == 0){
+									selectTableRoot->next = tmptable;
+									selectTableRoot->tabletail = tmptable;
+									selectTableNum ++;	
+								}
+								else{
+									selectTableRoot->tabletail->next = tmptable;
+									selectTableRoot->tabletail = tmptable;
+									selectTableNum ++;
+								}
+								/*for(int k=0;k<7;k++){
+									tmptable->isSelect[k] = 1;	
+								}*/
 							}
 							if(attributeFound == 0){
 								printf("404 attribute not found in table \"%s!!\"\n", tmptable->tableName);
@@ -635,7 +709,7 @@ void GetInstruction(){
 						//printf("start to find next table\n");
 						tmptable = tmptable->next;
 					}
-					if(attributeFound == 0)	break;
+					//if(attributeFound == 0)	break;
 					if(find) continue;
 					
 					//printf("there is no table name!!, Just attribute\n");
@@ -652,13 +726,24 @@ void GetInstruction(){
 								//found that attribute
 								//printf("in \"SELECT\" part\n");
 								//printf("find the attribute!!\n");
-								//printf("attribute name = %s\n", tmptable->attrName[l]);
+								//printf("attribute name = %s is SELECT!!\n", tmptable->attrName[l]);
 								//printf("it is from table : %s\n\n", tmptable->tableName);
 								
 								attributeFound = 1;
 								tmptable->isSelect[l] = 1;
 								j = j + 1;
 								find = 1;
+								
+								if(selectTableNum == 0){
+									selectTableRoot->next = tmptable;
+									selectTableRoot->tabletail = tmptable;
+									selectTableNum ++;	
+								}
+								else{
+									selectTableRoot->tabletail->next = tmptable;
+									selectTableRoot->tabletail = tmptable;
+									selectTableNum ++;
+								}
 							}
 						}
 						if(find) break;
@@ -668,11 +753,12 @@ void GetInstruction(){
 						printf("404 attribute not found!!\n");
 						break;	
 					}
-					printf("j = %d, from = %d\n", j, from);
+					//printf("j = %d, from = %d\n", j, from);
 				}
-				printf("from = %d; where = %d; keywordNum = %d\n", from, where, keywordNum);
-				printf("now go to the WHERE part\n\n");
+				//printf("from = %d; where = %d; keywordNum = %d\n", from, where, keywordNum);
+				//printf("now go to the WHERE part\n\n");
 			}
+			
 			//the WHERE PART
 			//there is no WHERE
 			if(!where){
@@ -711,24 +797,25 @@ void GetInstruction(){
 				memset(table, NULL, 10*sizeof(Table*));
 				char* andOr[5];
 				int attr[10];
-				printf("there has \"WHERE\"\n");
-				int op[5];
+				//printf("there has \"WHERE\"\n");
+				int op[5] = {};
 				
 				int condition = 0;
+
 				int andOrCnt = 0;
 				int eqStart = 0;
 				for(int j=where+1;j<keywordNum;j++){
 					int find = 0;
 					int tableFound = 0;
-					printf("this word is %s\n", keyword[j]);
+				//	printf("this word is %s\n", keyword[j]);
 					//if the attribute has prefix table name
 					Table* tmptable = fromTableRoot->next;
 					for(int k=0;k<fromTableNum;k++){
 						//full name or alias
 						if(!strcmp(keyword[j], tmptable->tableName) || (keyword[j][0] == tmptable->alias)){
-							printf("this table is %s\n", tmptable->tableName);
+							//printf("this table is %s\n", tmptable->tableName);
 							tableFound = 1;
-							printf("start to find attribute : %s\n", keyword[j+1]);
+							//printf("start to find attribute : %s\n", keyword[j+1]);
 							//find the table
 							//then start to find attribute
 							int attributeFound = 0;
@@ -739,11 +826,14 @@ void GetInstruction(){
 									attributeFound = 1;
 									table[condition] = new Table;
 									table[condition] = tmptable;
+									//printf("table[%d] is %s\n", condition, table[condition]->tableName);
 									data[condition] = new Data;
 									data[condition] = table[condition]->dataRoot;
+									
 									attr[condition] = l;
-									attributeFound = 1;
-									printf("there are %d conditions\n", condition);
+									//printf("first data is %s\n", data->attr[attr[condition]]);
+									//printf("there are %d conditions\n", condition);
+								
 									//printf("eqStart = %d\n", eqStart);
 									
 									if(eqStart == 0){
@@ -751,10 +841,11 @@ void GetInstruction(){
 										//the operator will appear
 										//(next keyword will be "=" or something else)
 										eqStart = !eqStart;
-										if(condition < 2*whereCondition || whereCondition==0){
+										if(condition < 2*whereCondition + 1 || whereCondition==0){
 											op[condition] = j+2;
-											printf("op[%d] = \"%s\"\n", condition, keyword[op[condition]]);
-											condition ++;
+											//printf("op[%d] = \"%d\"\n", condition, op[condition]);
+											//printf("%d in keyword[%d] is %s\n", op[condition], op[condition], keyword[op[condition]]);
+											
 										}	
 										j = j + 2;//now j is operator
 										//printf("next word will be %s\n", keyword[j+1]);
@@ -765,20 +856,20 @@ void GetInstruction(){
 										j = j + 2;//now j is "AND" or "OR"
 										if(keyword[j] != NULL){
 											andOr[andOrCnt] = keyword[j];
-											printf("andOr[%d] get %s\n", andOrCnt, keyword[j]); 
+											//printf("andOr[%d] get %s\n", andOrCnt, keyword[j]); 
 											andOrCnt ++;
 										}
 									}
-
+									condition ++;
 								}
 								if(attributeFound){
 									break;	
 								}
 							}
-							if(attributeFound == 0){
+							/*if(attributeFound == 0){
 								printf("404 attribute not found in table \"%s\"\n", tmptable->tableName);
 								break;	
-							}
+							}*/
 						}
 						if(tableFound){
 							break;
@@ -806,9 +897,12 @@ void GetInstruction(){
 								data[condition] = new Data;
 								data[condition] = table[condition]->dataRoot;
 								//printf("attribute name is %s\n", table[condition]->attrName[l]);
-								//printf("first data is %s\n", data[condition]->attr[l]);
+								
 								attr[condition] = l;
 								attributeFound = 1;
+								
+								//printf("first data is %s\n", data->attr[l]);
+								
 								//printf("there are %d conditions\n", condition);
 								//printf("eqStart = %d\n", eqStart);
 								
@@ -817,10 +911,11 @@ void GetInstruction(){
 									//the operator will appear
 									//(next keyword will be "=" or something else)
 									eqStart = !eqStart;
-									if(condition < 2*whereCondition || whereCondition==0){
+									if(condition < 2*whereCondition + 1 || whereCondition==0){
 										op[condition] = j+1;
-										printf("op[%d] = \"%s\"\n", condition, keyword[op[condition]]);
-										condition ++;
+										//printf("op[%d] = \"%d\"\n", condition, op[condition]);
+										//printf("%d in keyword[%d]\n", op[condition], keyword[op[condition]]);
+										
 									}
 									j = j + 1;//now j is operator
 									
@@ -832,112 +927,195 @@ void GetInstruction(){
 									j = j + 1;//now j is "AND" or "OR" 
 									if(keyword[j] != NULL){
 										andOr[andOrCnt] = keyword[j];
-										printf("andOr[%d] get %s\n", andOrCnt, keyword[j]); 
+										//printf("andOr[%d] get %s\n", andOrCnt, keyword[j]); 
 										andOrCnt ++;
 									}
 								}
+								condition ++;
 							}
 						}
 						tmptable = tmptable->next;
 					}
 					if(find) continue;
 					//just a number or string
-					printf("condition = %d\n", condition);
-					printf("this keyword is %s\n", keyword[j]);
+					//printf("condition = %d\n", condition);
+					if(!strcmp(keyword[j], "and") || !strcmp(keyword[j], "or")){
+						//printf("this keyword is \"%s\"\n", keyword[j]);
+						//printf("is not attribute\n");
+						andOr[andOrCnt] = keyword[j];
+						//printf("andOr[%d] get %s\n", andOrCnt, keyword[j]); 
+						andOrCnt ++;
+						eqStart = !eqStart;
+						continue;
+					}
+					
 					condition ++;
 				}
-				printf("condition = %d\n", condition);
+				//printf("condition = %d\n", condition);
+				/*for(int j=0;j<10;j++){
+					if(table[j] == NULL)
+						printf("table[%d] is NULL\n", j);
+					else{
+						printf("table[%d] : HAHA I AM NOT NULL\n", j);
+						printf("my table name is %s\n", table[j]->tableName);
+					}
+				}*/
+				
+				for(int j=0;j<condition;j+=2){
+					if(table[j] != NULL){
+						//printf("these two table will compare :\n");
+						//printf("j = %d\n", j);
+						//printf("table : %s\n", table[j]->tableName);
+						//printf("attribute : %s\n", table[j]->attrName[attr[j]]);
+						//printf("all posibible tuple :\n");
+						//data[j] = table[j]->dataRoot; 
+							
+						for(int x=0;x<table[j]->dataCount;x++){
+							//printf("%-15s ", data[j]->attr[attr[j]]);
+							/*if(table[j+1] == NULL){
+								printf("%-15s ", data[j]->attr[attr[j]]);
+								printf("%-15s \n", keyword[op[j]+1]); 
+							}*/ 
+								
+							/*else{
+								data[j+1] = table[j+1]->dataRoot;
+								for(int x=0;x<table[j+1]->dataCount;x++){
+									printf("%-15s ", data[j]->attr[attr[j]]);
+									printf("%-15s\n", data[j+1]->attr[attr[j+1]]);
+									data[j+1] = data[j+1]->next;
+								}
+							} */ 
+							//data[j] = data[j]->next;	
+						}
+						//printf("\n");
+					}  
+				}
+				
+				//printf("\"AND\" or \"OR\" are %d is %s\n", whereCondition, andOr[0]);
+				//for(int j=0;j<whereCondition;j++){
+				//	printf("%s\n", andOr[j]);
 				//start to check the condition
 				printf("-----start to print the answer-----\n\n");
-				//showtable();
-				printf("\n\n");
+				showtable();
+				printf("\n");
+				
+				
+				
 				//printf("compare all the column form\n");
 				//printf("table : %s ; attrbute : %s\n", table[0], table[0]->attrName[attr[0]]);
 				//printf("table : %s ; attrbute : %s\n", table[1], table[0]->attrName[attr[1]]);
-				Data* tmpdata[10];
-				tmpdata[0] = data[0];
-				for(int x=0;x<whereCondition;x++){
-					/*for(int j=0;j<table[0]->dataCount;j++){//table one
-						tmpdata[1] = data[1];
-						for(int k=0;k<table[1]->dataCount;k++){//table two
-							if(!strcmp(op, "=")){
-								//printf("attribute name : %s\n", table[0]->attrName[attr[0]]);
-								//printf("now, data in table 1 = %s\n", tmpdata[0]->attr[attr[0]]);
-								//printf("attribute name : %s\n", table[0]->attrName[attr[1]]);
-								//printf("now, data in table 2 = %s\n", tmpdata[1]->attr[attr[1]]);
-								if(!strcmp(tmpdata[0]->attr[attr[0]], tmpdata[1]->attr[attr[1]])){
-									//printf("these two data is ready to print!!\n");
-									for(int l=0;l<table[0]->attrNum;l++){
-										if(table[0]->isSelect[l] != 0)
-											printf("%-15s", tmpdata[0]->attr[l]);
+				//Data* tmpdata[10];
+				bool statment[10];
+				int statCnt = 0;
+				//Data* tmpdata[10];
+				memset(statment, 0, 10*sizeof(bool));
+				vector<Data*> candidate1;
+				vector<Data*> candidate2;
+				//Data* candidate[10000][2];
+				
+				for(int j=0;j<condition;j+=2){//all table ready to be compare
+					printf("round %d\n", j/2);
+					if(table[j] != NULL){
+						data[j] = table[j]->dataRoot;
+						for(int t1=0;t1<table[j]->dataCount;t1++){
+							if(table[j+1] == NULL){
+								if(j == 0){
+									//printf("%s %s %s\n", data[j]->attr[attr[j]], keyword[op[j]+1], keyword[op[j]]);
+									if(compare(data[j]->attr[attr[j]], keyword[op[j]+1], keyword[op[j]])){
+										printf("%s %s %s \n", data[j]->attr[attr[j]], keyword[op[j]], keyword[op[j]+1]);
+										candidate1.push_back(data[j]);
+										candidate2.push_back(data[j]);
 									}
-									for(int l=0;l<table[1]->attrNum;l++){
-										if(table[1]->isSelect[l] != 0)
-											printf("%-15s", tmpdata[1]->attr[l]);
-									}
-									printf("\n");
 								}
-							}
-							else if(!strcmp(op, "<>")){
-								//printf("these two data is ready to print!!\n");
-								if(strcmp(tmpdata[0]->attr[attr[0]], tmpdata[1]->attr[attr[1]])){
-									for(int l=0;l<table[0]->attrNum;l++){
-										if(table[0]->isSelect[l] != 0)
-											printf("%-15s", tmpdata[0]->attr[l]);
+								else{
+									//printf("j is %d\n", j);
+									if(!strcmp(andOr[j/2-1], "and")){//if not the same 
+										//remove that data in vector because is different
+										//printf("find \"and\" (%s)\n", andOr[j/2-1]);
+										if(!compare(data[j]->attr[attr[j]], keyword[op[j]+1], keyword[op[j]])){
+											for(int v=0;v<candidate1.size();v++){
+												//printf("%s %s\n", data[j]->attr[attr[j]], keyword[op[j]+1]);
+												//printf("input\n");
+												//printf("%s %s %s %s\n", data[j]->attr[0], data[j]->attr[1], data[j]->attr[2], data[j]->attr[3]);
+												if(compareData(data[j], candidate1[v]) || compareData(data[j], candidate2[v])){
+													//printf("candidate1\n");
+													//printf("%s %s %s\n", candidate1[v]->attr[0], candidate1[v]->attr[1], candidate1[v]->attr[2]);
+													//printf("candidate2\n");
+													//printf("%s %s %s\n", candidate2[v]->attr[0], candidate2[v]->attr[1], candidate2[v]->attr[2]);
+													candidate1.erase(candidate1.begin() + v);
+													candidate2.erase(candidate2.begin() + v);
+													v--;
+												}
+											}
+										}
 									}
-									for(int l=0;l<table[1]->attrNum;l++){
-										if(table[1]->isSelect[l] != 0)
-											printf("%-15s", tmpdata[1]->attr[l]);
+									else if(!strcmp(andOr[j/2-1], "or")){
+										if(!compare(data[j]->attr[attr[j]], keyword[op[j]+1], keyword[op[j]])){
+											candidate1.push_back(data[j]);
+											candidate2.push_back(data[j]);
+										}
+										
 									}
-									printf("\n");
 								}
+								
 							}
-							else if(!strcmp(op, ">")){
-								stringstream s_str1( tmpdata[0]->attr[attr[0]] );
-							    int num1;
-							    s_str1 >> num1;
-							    
-							    stringstream s_str2( tmpdata[1]->attr[attr[1]] );
-							    int num2;
-							    s_str2 >> num2;
-							    if(num1 > num2){
-							    	for(int l=0;l<table[0]->attrNum;l++){
-										if(table[0]->isSelect[l] != 0)
-											printf("%-15s", tmpdata[0]->attr[l]);
+							else{//not null
+								data[j+1] = table[j+1]->dataRoot;
+								for(int t2=0;t2<table[j+1]->dataCount;t2++){
+									if(j == 0){ 
+										//printf("%s %s %s\n", data[j]->attr[attr[j]], data[j+1]->attr[attr[j+1]], keyword[op[j]]);
+										if(compare(data[j]->attr[attr[j]], data[j+1]->attr[attr[j+1]], keyword[op[j]])){
+											//printf("%s %s %s\n", data[j]->attr[0], data[j]->attr[1], data[j]->attr[2]);	
+											//printf("%s %s %s\n", data[j+1]->attr[0], data[j+1]->attr[1], data[j+1]->attr[2]);
+												
+											
+											printf("%s %s %s\n", data[j]->attr[attr[j]], keyword[op[j]], data[j+1]->attr[attr[j+1]]); 
+											candidate1.push_back(data[j]);
+											candidate2.push_back(data[j+1]);
+										}
 									}
-									for(int l=0;l<table[1]->attrNum;l++){
-										if(table[1]->isSelect[l] != 0)
-											printf("%-15s", tmpdata[1]->attr[l]);
-									}
-									printf("\n");
-							    }
+									else{
+										printf("j is %d\n", j);
+										if(!strcmp(andOr[j/2-1], "and")){//if not the same 
+											//printf("find \"and\" (%s)\n", andOr[j/2-1]);
+											//remove that data in vector because is different
+											if(compare(data[j]->attr[attr[j]], data[j+1]->attr[attr[j+1]], keyword[op[j]])){
+												for(int v=0;v<candidate1.size();v++){
+													if(compareData(data[j], candidate1[v]) || compareData(data[j], candidate2[v])){
+														candidate1.erase(candidate1.begin() + v);
+														candidate2.erase(candidate2.begin() + v);
+														v--;
+													}
+												}
+											}
+											
+										}
+										else if(!strcmp(andOr[j/2-1], "or")){
+											if(!compare(data[j]->attr[attr[j]], data[j+1]->attr[attr[j+1]], keyword[op[j]])){
+												candidate1.push_back(data[j]);
+												candidate2.push_back(data[j+1]);
+											} 
+											
+										}
+									} 
+									data[j+1] = data[j+1]->next;
+								}
+								
 							}
-							else if(!strcmp(op, "<")){
-								stringstream s_str1( tmpdata[0]->attr[attr[0]] );
-							    int num1;
-							    s_str1 >> num1;
-							    
-							    stringstream s_str2( tmpdata[1]->attr[attr[1]] );
-							    int num2;
-							    s_str2 >> num2;
-							    if(num1 < num2){
-							    	for(int l=0;l<table[0]->attrNum;l++){
-										if(table[0]->isSelect[l] != 0)
-											printf("%-15s", tmpdata[0]->attr[l]);
-									}
-									for(int l=0;l<table[1]->attrNum;l++){
-										if(table[1]->isSelect[l] != 0)
-											printf("%-15s", tmpdata[1]->attr[l]);
-									}
-									printf("\n");
-							    }
-							}
-							tmpdata[1] = tmpdata[1]->next;
-							//printf("go to check next data in table 2\n");
+							data[j] = data[j]->next;
 						}
-						tmpdata[0] = tmpdata[0]->next;
-					}*/ 
+					}
 				}
+				
+				//check what is leave in candidate
+				printf("start to find what is leave in candidate vector\n");
+				Table* tmptable = selectTableRoot;
+				printf("%s\n", candidate1[0]->attr[1]);
+				printf("candidate size = %d\n", candidate1.size());
+				int canSize = candidate1.size();
+				/*for(int j=0;j<10;j++){
+						
+				}*/ 
 			}
 		}
 	}
