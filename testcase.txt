@@ -55,7 +55,7 @@ VALUES (9, 'Star Wars', 1320, 6, 'Penguin Books');
 INSERT INTO Book
 VALUES (10, 'VPN Architectures', 450, 2, 'Barrons');
 
-SELECT a.name, title
-FROM Book, Author AS a
-WHERE Book.authorId = a.authorId AND Book.pages > 200;
+SELECT bookId, title, pages, name
+FROM Book, Author
+WHERE Book.authorId = Author.authorId;
 
